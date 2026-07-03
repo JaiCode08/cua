@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Form Task</title>
+    <style>
+        body { font-family: system-ui, sans-serif; padding: 15px 20px; max-width: 600px; margin: 0 auto; box-sizing: border-box; }
+        h2 { margin-top: 0; margin-bottom: 15px; }
+        form { display: flex; flex-direction: column; }
+        .form-group { margin-bottom: 15px; display: flex; flex-direction: column; }
+        label { margin-bottom: 5px; font-weight: bold; }
+        input, textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; caret-color: transparent; }
+        textarea { height: 150px; resize: none; }
+        button { background: #0066cc; color: white; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        button:hover { background: #0052a3; }
+    </style>
+</head>
+<body>
+    <h2>Contact Us</h2>
+    <form id="taskForm">
+        <div class="form-group">
+            <label for="name">Name</label>
+            <input type="text" id="name" autocomplete="off" required>
+        </div>
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" autocomplete="off" required>
+        </div>
+        <div class="form-group">
+            <label for="comment">Comment</label>
+            <textarea id="comment" autocomplete="off" required></textarea>
+        </div>
+        <button type="submit" id="submitBtn">Submit</button>
+    </form>
+    
+    <script>
+        document.getElementById('taskForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const data = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                comment: document.getElementById('comment').value
+            };
+            window.__submitted = true;
+            window.__formData = data;
+            
+            const output = document.createElement('main');
+            const heading = document.createElement('h2');
+            heading.textContent = 'Thank you!';
+            const confirmation = document.createElement('p');
+            confirmation.textContent = 'Form submitted successfully.';
+            const values = document.createElement('dl');
+            for (const [label, value] of Object.entries(data)) {
+                const term = document.createElement('dt');
+                term.textContent = label;
+                const detail = document.createElement('dd');
+                detail.textContent = value;
+                values.append(term, detail);
+            }
+            output.append(heading, confirmation, values);
+            document.body.replaceChildren(output);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Flakiness Report - {{ task_id }}</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f9fafb; color: #111827; margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        h1, h2, h3 { margin-top: 0; }
+        .metadata { background: #f3f4f6; padding: 15px; border-radius: 6px; font-size: 0.9em; margin-bottom: 20px; }
+        .metadata p { margin: 5px 0; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e5e7eb; }
+        th { background: #f9fafb; font-weight: 600; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 9999px; font-size: 0.85em; font-weight: bold; }
+        .badge-pass { background: #d1fae5; color: #065f46; }
+        .badge-fail { background: #fee2e2; color: #991b1b; }
+        .repro { background: #1f2937; color: #f3f4f6; padding: 15px; border-radius: 6px; font-family: monospace; overflow-x: auto; margin-bottom: 30px; }
+        .failure-detail { border: 1px solid #fee2e2; padding: 20px; border-radius: 6px; margin-bottom: 20px; }
+        .screenshots { display: flex; gap: 20px; margin-top: 15px; }
+        .screenshot-box { flex: 1; }
+        .screenshot-box img { max-width: 100%; border: 1px solid #e5e7eb; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .screenshot-box h4 { margin-top: 0; font-size: 0.9em; color: #4b5563; text-align: center; }
+        pre { background: #f3f4f6; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Flakiness Report: {{ task_id }}</h1>
+        
+        <div class="metadata">
+            <p><strong>Trajectory:</strong> {{ trajectory_path }}</p>
+            <p><strong>Verifier:</strong> {{ verifier_path }}</p>
+            <p><strong>Date:</strong> {{ date }}</p>
+            <p><strong>Image:</strong> {{ image_info }}</p>
+            <p><strong>Environment:</strong> {{ os_info }} | Python {{ python_version }} | cua-driver {{ cua_driver_version }}</p>
+        </div>
+        
+        <div class="repro">
+            # Reproduce this run:<br>
+            {{ repro_cmd }}
+        </div>
+
+        <h2>Summary</h2>
+        <table>
+            <tr>
+                <th>Runs</th>
+                <th>Passed</th>
+                <th>Failed</th>
+                <th>Flake Rate</th>
+                <th>Cache Hit Rate</th>
+                <th>Total Interventions</th>
+                <th>Cache States</th>
+            </tr>
+            <tr>
+                <td>{{ summary.runs }}</td>
+                <td>{{ summary.passes }}</td>
+                <td>{{ summary.failures }}</td>
+                <td>{{ "%.1f"|format(summary.flake_rate * 100) }}%</td>
+                <td>{{ "%.1f"|format(summary.cache_hit_rate * 100) }}%</td>
+                <td>{{ summary.agent_interventions_total }}</td>
+                <td>{{ summary.cache_hits }} hits / {{ summary.cache_misses }} misses</td>
+            </tr>
+        </table>
+        
+        <h2>Per-run Timeline</h2>
+        <table>
+            <tr>
+                <th>Run #</th>
+                <th>Status</th>
+                <th>Duration (ms)</th>
+                <th>Cache Hits</th>
+                <th>Cache Misses</th>
+                <th>Interventions</th>
+                <th>Failure Category</th>
+                <th>Artifacts</th>
+                <th>Timeline</th>
+            </tr>
+            {% for r in results %}
+            <tr>
+                <td>{{ r.run_index }}</td>
+                <td>
+                    <span class="badge {% if r.passed %}badge-pass{% else %}badge-fail{% endif %}">
+                        {% if r.passed %}PASS{% else %}FAIL{% endif %}
+                    </span>
+                </td>
+                <td>{{ r.duration_ms }}</td>
+                <td>{{ r.cache_hits }}</td>
+                <td>{{ r.cache_misses }}</td>
+                <td>{{ r.agent_interventions }}</td>
+                <td>{% if not r.passed and r.failure %}{{ r.failure.category }}{% else %}-{% endif %}</td>
+                <td>
+                    <a href="{{ r.run_dir_link }}/">run directory</a> |
+                    <a href="{{ r.log_link }}">log.jsonl</a>
+                    {% if r.verifier_link %}| <a href="{{ r.verifier_link }}">verifier result</a>{% endif %}
+                </td>
+                <td>
+                    {% if r.timeline %}<details><summary>{{ r.timeline|length }} steps</summary><pre>{{ r.timeline | tojson(indent=2) }}</pre></details>{% else %}-{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        
+        {% if failed_runs %}
+        <h2>Failure Details</h2>
+        {% for fr in failed_runs %}
+        <div class="failure-detail">
+            <h3>Run {{ fr.run_index }}</h3>
+            {% if fr.failure %}
+            <p><strong>Category:</strong> <span class="badge badge-fail">{{ fr.failure.category }}</span></p>
+            <p><strong>Reason:</strong> {{ fr.failure.reason }}</p>
+            {% if fr.failing_step %}
+            <p><strong>Failed at Step:</strong> {{ fr.failing_step }}</p>
+            {% endif %}
+            {% if fr.failure.detail %}
+            <p><strong>Detail:</strong></p>
+            <pre>{{ fr.failure.detail | tojson(indent=2) }}</pre>
+            {% endif %}
+            <p><a href="{{ fr.log_path }}">Structured run log</a></p>
+            {% endif %}
+            
+            {% if fr.verifier_result and not fr.verifier_result.passed %}
+            <h4>Verifier Output</h4>
+            <p><strong>Reason:</strong> {{ fr.verifier_result.reason }}</p>
+            {% if fr.verifier_result.details %}
+            <pre>{{ fr.verifier_result.details | tojson(indent=2) }}</pre>
+            {% endif %}
+            {% endif %}
+            
+            {% if fr.before_img or fr.after_img %}
+            <div class="screenshots">
+                {% if fr.before_img %}
+                <div class="screenshot-box">
+                    <h4>Before Failure {% if fr.failing_step %}(Step {{ fr.failing_step - 1 }}){% endif %}</h4>
+                    <img src="{{ fr.before_img }}" alt="Before screenshot">
+                </div>
+                {% endif %}
+                {% if fr.after_img %}
+                <div class="screenshot-box">
+                    <h4>At Failure {% if fr.failing_step %}(Step {{ fr.failing_step }}){% endif %}</h4>
+                    <img src="{{ fr.after_img }}" alt="After screenshot">
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+</body>
+</html>
+

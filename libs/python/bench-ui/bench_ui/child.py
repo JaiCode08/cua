@@ -161,6 +161,7 @@ def main():
             confirm_close=False,
             text_select=True,
             background_color="#FFFFFF",
+            on_top=True
         )
         html_for_server = None
         folder_for_server = None
@@ -177,6 +178,7 @@ def main():
             confirm_close=False,
             text_select=True,
             background_color="#FFFFFF",
+            on_top=True
         )
         html_for_server = None
         folder_for_server = folder
@@ -193,6 +195,7 @@ def main():
             confirm_close=False,
             text_select=True,
             background_color="#FFFFFF",
+            on_top=True
         )
         html_for_server = html
         folder_for_server = None
